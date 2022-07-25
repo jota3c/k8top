@@ -20,6 +20,7 @@
 #
 
 import curses
+import operator
 import shlex, subprocess
 import re
 import io
@@ -43,6 +44,7 @@ NODES="get nodes "
 VERSION="version --short  "
 PODS="get pods -A "
 PVCS="get pvc -A "
+OPERATORS="get co "
 
 # ATTENTION: Caution to change
 #SPACETOCSV="| tr -s '[:blank:]' ';' "
@@ -50,6 +52,7 @@ NODESCMD=shlex.split(MAINCMD+NODES)
 VERSIONCMD=shlex.split(MAINCMD+VERSION)
 PODSCMD=shlex.split(MAINCMD+PODS)
 PVCSCMD=shlex.split(MAINCMD+PVCS)
+OPERATORSCMD=shlex.split(MAINCMD+OPERATORS)
 
 ### Enf of CMDS ######################
 
@@ -75,7 +78,11 @@ class Po:
 class Pods(Po):
     def __init__(self,width=0,rows=5):
         super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
+        try:
+            self.df = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
+        except:
+            self.df = None
+
 
     def get(self):
         return self.df
@@ -103,20 +110,40 @@ class Pods(Po):
 class Pvcs(Po):
     def __init__(self,width=0,rows=5):
         super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')    
+        try:
+            self.df = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')    
+        except:
+            self.df = None            
 
     def count(self):
         return str(len(self.df.index))        
 
     def countbound(self):
         dftmp=self.df['STATUS'].value_counts()
-        return str(dftmp['Bound'])        
+        return str(dftmp['Bound'])
+
+class Operators(Po):
+    def __init__(self,width=0,rows=5):
+        super().__init__(width=0,rows=5)
+        try:
+            self.df = pd.read_csv(CSV.getcsv(OPERATORSCMD), delimiter=';')  
+        except:
+            self.df = None            
+        #AVAILABLE   PROGRESSING   DEGRADED
+        #   True        False         False
+
+    def notok(self):
+        return self.df.query("AVAILABLE != 'True' and PROGRESSING != 'False' and DEGRADED != 'False'")        
+
 
 
 class Version(Po):
     def __init__(self,width=0,rows=5):
         super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(VERSIONCMD), delimiter=';', names=["object", "trash", "version"])   
+        try:
+            self.df = pd.read_csv(CSV.getcsv(VERSIONCMD), delimiter=';', names=["object", "trash", "version"])   
+        except:
+            self.df = None            
 
     def client(self):
         return str(self.df[self.df.object=='Client'].version.item())
@@ -133,7 +160,10 @@ class Version(Po):
 class Nodes(Po):
     def __init__(self,width=0,rows=5):
         super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')  
+        try:
+            self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')  
+        except:
+            self.df = None
 
     def count(self):
         return str(len(self.df.index))
@@ -225,6 +255,7 @@ def draw_menu(stdscr):
 
         # Nao esperar tecla ser pressionada
         stdscr.nodelay(True)
+        stdscr.clear()
 
          # exemplos para centralizar
         #start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
@@ -246,7 +277,8 @@ def draw_menu(stdscr):
         nodes = Nodes(width-4)        
         ver = Version()      
         pods=Pods(width-4)  
-        pvcs=Pvcs(width-4)        
+        pvcs=Pvcs(width-4)      
+        operators=Operators(width-4)
 
         statusbar.draw(stdscr,"Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s".format(hora, SECONDS) ,width,height)        
 
@@ -274,14 +306,18 @@ def draw_menu(stdscr):
 
         last=3
 
-        # Failed Pods
-        last=last+TopWin().draw(pods.failed(),"Failed Pods",width-1,last)
+        # Operators
+        if operators.df != None:
+            last=last+TopWin().draw(operators.notok(),"Operators NotOK Pods",width-1,last)        
 
-        # Restarting Pods
-        last=last+TopWin().draw(pods.restarts(),"Restarted Pods",width-1,last)        
+        # Failed Pods
+        if pods.df != None:
+            last=last+TopWin().draw(pods.failed(),"Failed Pods",width-1,last)
+            last=last+TopWin().draw(pods.restarts(),"Restarted Pods",width-1,last)        
 
         # Nodes
-        last=last+TopWin().draw(nodes.get(),"Nodes",width-1,last+1)
+        if nodes.df != None:
+            last=last+TopWin().draw(nodes.get(),"Nodes",width-1,last+1)
 
 
         # Refresh
