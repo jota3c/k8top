@@ -78,7 +78,6 @@ class Pods(Po):
         return str(len(self.df.query("STATUS != 'Running' and STATUS != 'Completed' and STATUS != 'Terminated'").index))
 
     def count(self):
-        #df_filter=self.df['STATUS'].value_counts()
         df_sum=int(self.countrun())+int(self.countfailed())
         return str(df_sum)
 
@@ -117,7 +116,6 @@ class Version(Po):
         else:
             return False
         
-
 class Nodes(Po):
     def __init__(self,width=0,rows=5):
         super().__init__(width=0,rows=5)
@@ -200,21 +198,6 @@ def draw_menu(stdscr):
         pods=Pods(width-4)  
         pvcs=Pvcs(width-4)
 
-        # if k == curses.KEY_DOWN:
-        #     cursor_y = cursor_y + 1
-        # elif k == curses.KEY_UP:
-        #     cursor_y = cursor_y - 1
-        # elif k == curses.KEY_RIGHT:
-        #     cursor_x = cursor_x + 1
-        # elif k == curses.KEY_LEFT:
-        #     cursor_x = cursor_x - 1
-
-        # cursor_x = max(0, cursor_x)
-        # cursor_x = min(width-1, cursor_x)
-
-        # cursor_y = max(0, cursor_y)
-        # cursor_y = min(height-1, cursor_y)
-
         # Desabilitando cursor
         curses.curs_set(0)
 
@@ -246,13 +229,11 @@ def draw_menu(stdscr):
 
         k = stdscr.getch()
     
-        nodestxt="Nodes : "+nodes.countready()
-        vertxt="Versions (cli/srv) : "+ver.client()+"/"+ver.server()
-        podstxt="Pods Running: "+pods.countrun()+"/"+pods.count()
-        pvcstxt="PVC Bound : {}/{}".format(pvcs.countbound(),pvcs.count())
+        nodestxt="Nodes Ready: {}/{}".format(nodes.countready(),nodes.count())
+        vertxt="Versions (cli/srv): {}/{}".format(ver.client(),ver.server())
+        podstxt="Pods Running: {}/{} ".format(pods.countrun(),pods.count())
+        pvcstxt="PVC Bound: {}/{}".format(pvcs.countbound(),pvcs.count())
 
-        #stdscr.addstr(1, 0, "Nodes : "+nodes.countready()+"/"+nodes.count()+" | Cluster : "+ver.server()+" | Client: "+ver.client())
-        #stdscr.addstr(1, 0, nodestxt+" | "+podstxt+" | "+vertxt)
         stdscr.addstr(1, 0, "{} | {} | {} | {}".format(nodestxt,podstxt,pvcstxt,vertxt))
         stdscr.hline(2,0,"_",width)
 
