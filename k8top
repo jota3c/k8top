@@ -1,4 +1,9 @@
 #!/bin/env python3
+#
+# K8Top - "top" like for K8S and OCP Clusters
+#
+# Juliano Costa - 25/07/2022 - initial version
+#
 import curses
 import shlex, subprocess
 import re
@@ -11,33 +16,52 @@ from time import sleep
 #
 SECONDS=5
 
-# COMMANDOS
-# TERMINAR TODOS COM SPACE
-
-# AJUSTAR CONFORME A INFRA
+#### CMDS ###########################
+# = Obs.: use white space on the end
+#####################################
+# Kubernetes
 MAINCMD="kubectl "
+# Openshift
+#MAINCMD="oc "
 
+# Get Objects
 NODES="get nodes "
 VERSION=" version --short  "
 PODS="get pods -A "
+PVCS="get pvc -A "
 
-# NAO ALTERAR
-SPACETOCSV="| tr -s '[:blank:]' ';' "
+# ATTENTION: Caution to change
+#SPACETOCSV="| tr -s '[:blank:]' ';' "
 NODESCMD=shlex.split(MAINCMD+NODES)
 VERSIONCMD=shlex.split(MAINCMD+VERSION)
 PODSCMD=shlex.split(MAINCMD+PODS)
+PVCSCMD=shlex.split(MAINCMD+PVCS)
 
-class Pods:
-    def __init__(self,width,rows=5):
-        result = subprocess.run(PODSCMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+### Enf of CMDS ######################
+
+
+class CSV:
+    def __init__(self):
+        pass
+
+    def getcsv(CMD):
+        result = subprocess.run(CMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
         filtered_result = re.sub(r'\([^)]*\)', '',result.stdout.decode('utf-8'))
         csv_result = re.sub( r"[^\S\n\t]+", ";", filtered_result )        
+        return io.StringIO(csv_result)
+
+class Po:
+    def __init__(self,width=0,rows=5):
         pd.set_option('display.max_rows', rows)
         pd.set_option('display.max_columns', None)
         pd.set_option('display.width', width)
         pd.set_option('display.max_colwidth', None)
-        pd.set_option('display.colheader_justify', 'right')
-        self.df = pd.read_csv(io.StringIO(csv_result), delimiter=';')
+        pd.set_option('display.colheader_justify', 'right')        
+
+class Pods(Po):
+    def __init__(self,width=0,rows=5):
+        super().__init__(width=0,rows=5)
+        self.df = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
 
     def get(self):
         return self.df
@@ -61,18 +85,25 @@ class Pods:
     def countrun(self):        
         dftmp=self.df['STATUS'].value_counts()
         return str(dftmp['Running'])
-        
 
-class Version:
-    def __init__(self):
-        result = subprocess.run(VERSIONCMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
-        csv_result = re.sub( r"[^\S\n\t]+", ";", result.stdout.decode('utf-8') )
-        pd.set_option('display.max_rows', None)
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', None)
-        pd.set_option('display.max_colwidth', None)
-        pd.set_option('display.colheader_justify', 'right')
-        self.df = pd.read_csv(io.StringIO(csv_result), delimiter=';', names=["object", "trash", "version"])
+
+class Pvcs(Po):
+    def __init__(self,width=0,rows=5):
+        super().__init__(width=0,rows=5)
+        self.df = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')    
+
+    def count(self):
+        return str(len(self.df.index))        
+
+    def countbound(self):
+        dftmp=self.df['STATUS'].value_counts()
+        return str(dftmp['Bound'])        
+
+
+class Version(Po):
+    def __init__(self,width=0,rows=5):
+        super().__init__(width=0,rows=5)
+        self.df = pd.read_csv(CSV.getcsv(VERSIONCMD), delimiter=';', names=["object", "trash", "version"])   
 
     def client(self):
         return str(self.df[self.df.object=='Client'].version.item())
@@ -87,16 +118,10 @@ class Version:
             return False
         
 
-class Nodes:
-    def __init__(self,width,rows=5):
-        result = subprocess.run(NODESCMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
-        csv_result = re.sub( r"[^\S\n\t]+", ";", result.stdout.decode('utf-8') )
-        pd.set_option('display.max_rows', rows)
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', width)
-        pd.set_option('display.max_colwidth', width)
-        pd.set_option('display.colheader_justify', 'right')
-        self.df = pd.read_csv(io.StringIO(csv_result), delimiter=';')
+class Nodes(Po):
+    def __init__(self,width=0,rows=5):
+        super().__init__(width=0,rows=5)
+        self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')  
 
     def count(self):
         return str(len(self.df.index))
@@ -173,21 +198,22 @@ def draw_menu(stdscr):
         nodes = Nodes(width-4)        
         ver = Version()      
         pods=Pods(width-4)  
+        pvcs=Pvcs(width-4)
 
-        if k == curses.KEY_DOWN:
-            cursor_y = cursor_y + 1
-        elif k == curses.KEY_UP:
-            cursor_y = cursor_y - 1
-        elif k == curses.KEY_RIGHT:
-            cursor_x = cursor_x + 1
-        elif k == curses.KEY_LEFT:
-            cursor_x = cursor_x - 1
+        # if k == curses.KEY_DOWN:
+        #     cursor_y = cursor_y + 1
+        # elif k == curses.KEY_UP:
+        #     cursor_y = cursor_y - 1
+        # elif k == curses.KEY_RIGHT:
+        #     cursor_x = cursor_x + 1
+        # elif k == curses.KEY_LEFT:
+        #     cursor_x = cursor_x - 1
 
-        cursor_x = max(0, cursor_x)
-        cursor_x = min(width-1, cursor_x)
+        # cursor_x = max(0, cursor_x)
+        # cursor_x = min(width-1, cursor_x)
 
-        cursor_y = max(0, cursor_y)
-        cursor_y = min(height-1, cursor_y)
+        # cursor_y = max(0, cursor_y)
+        # cursor_y = min(height-1, cursor_y)
 
         # Desabilitando cursor
         curses.curs_set(0)
@@ -223,9 +249,11 @@ def draw_menu(stdscr):
         nodestxt="Nodes : "+nodes.countready()
         vertxt="Versions (cli/srv) : "+ver.client()+"/"+ver.server()
         podstxt="Pods Running: "+pods.countrun()+"/"+pods.count()
+        pvcstxt="PVC Bound : {}/{}".format(pvcs.countbound(),pvcs.count())
 
         #stdscr.addstr(1, 0, "Nodes : "+nodes.countready()+"/"+nodes.count()+" | Cluster : "+ver.server()+" | Client: "+ver.client())
-        stdscr.addstr(1, 0, nodestxt+" | "+podstxt+" | "+vertxt)
+        #stdscr.addstr(1, 0, nodestxt+" | "+podstxt+" | "+vertxt)
+        stdscr.addstr(1, 0, "{} | {} | {} | {}".format(nodestxt,podstxt,pvcstxt,vertxt))
         stdscr.hline(2,0,"_",width)
 
         k = stdscr.getch()
