@@ -137,7 +137,7 @@ class Operators(Po):
         #   True        False         False
 
     def notok(self):
-        return self.df.query("AVAILABLE != 'True' and PROGRESSING != 'False' and DEGRADED != 'False'")        
+        return self.df.query("AVAILABLE != 'True' or PROGRESSING != 'False' or DEGRADED != 'False'")        
 
 
 
@@ -316,7 +316,7 @@ def draw_menu(stdscr):
 
         # Operators
         if operators.validate == True:
-            last=last+TopWin().draw(operators.notok(),"Operators NotOK Pods",width-1,last)        
+            last=last+TopWin().draw(operators.notok(),"Operators NotOK",width-1,last)        
 
         # Failed Pods
         if pods.validate == True:
