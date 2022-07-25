@@ -89,7 +89,7 @@ class Pods(Po):
 
     def restarts(self):
         filter=self.df.query("RESTARTS != 0")
-        return filter.sort_values(by=['RESTARTS'], ascending=False)
+        return filter.sort_values(by=['RESTARTS'], ascending=False).head(5)
 
 
     def failed(self):
@@ -214,7 +214,7 @@ class TopWin:
             lincount=1
             for line in df.to_string(index=False).split('\n'):
                 win.addstr(lincount, 5, line)
-                if lincount >= 6: 
+                if lincount > 6: 
                     win.addstr(lincount+1, 5, "...")
                     break
                 lincount+=1           
@@ -320,8 +320,8 @@ def draw_menu(stdscr):
 
         # Failed Pods
         if pods.validate == True:
-            last=last+TopWin().draw(pods.failed(),"Failed Pods",width-1,last)
-            last=last+TopWin().draw(pods.restarts(),"Restarted Pods",width-1,last)        
+            last=last+TopWin().draw(pods.failed(),"Not Running Pods",width-1,last)
+            last=last+TopWin().draw(pods.restarts(),"Top 5 Restarted Pods",width-1,last)        
 
         # Nodes
         if nodes.validate == True:
