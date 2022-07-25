@@ -1,6 +1,8 @@
 #!/bin/env python3
 #
+###########################################################################
 # K8Top - "top" like for K8S and OCP Clusters
+###########################################################################
 #
 # Copyright 2022 - Juliano Costa
 #
@@ -15,6 +17,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
 import curses
 import shlex, subprocess
