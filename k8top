@@ -23,7 +23,6 @@ import curses
 import shlex, subprocess
 import re
 import io
-from numpy import true_divide
 import pandas as pd
 from datetime import datetime
 from time import sleep
