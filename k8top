@@ -184,6 +184,17 @@ class TopWin:
             return lincount+2
         return 0            
 
+class StatusBar():
+    def __init__(self):
+        pass
+
+    def draw(self,stdscr,title,width,height):
+        statusbarstr = title       
+        stdscr.attron(curses.color_pair(3))
+        stdscr.addstr(height-1, 0, statusbarstr)
+        stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
+        stdscr.attroff(curses.color_pair(3))
+        stdscr.refresh()        
     
 def draw_menu(stdscr):
     k = 0
@@ -205,12 +216,9 @@ def draw_menu(stdscr):
 
 
         # Initialization
-        stdscr.clear()
+        #stdscr.erase()
         height, width = stdscr.getmaxyx()
-        nodes = Nodes(width-4)        
-        ver = Version()      
-        pods=Pods(width-4)  
-        pvcs=Pvcs(width-4)
+
 
         # Desabilitando cursor
         curses.curs_set(0)
@@ -218,13 +226,7 @@ def draw_menu(stdscr):
         # Nao esperar tecla ser pressionada
         stdscr.nodelay(True)
 
-        # Hora para barra status
-        hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-        #statusbarstr = "Press 'q' or Ctrl+C to exit | {} | Pos: {}, {}".format(hora, cursor_x, cursor_y)
-        statusbarstr = "Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s".format(hora, SECONDS)
-
-
-        # exemplos para centralizar
+         # exemplos para centralizar
         #start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
         #start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
         #start_x_keystr = int((width // 2) - (len(keystr) // 2) - len(keystr) % 2)
@@ -233,13 +235,26 @@ def draw_menu(stdscr):
         # Header
         stdscr.addstr(0, 0, "= K8Top =", curses.color_pair(1))
 
-        # Status 
-        stdscr.attron(curses.color_pair(3))
-        stdscr.addstr(height-1, 0, statusbarstr)
-        stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
-        stdscr.attroff(curses.color_pair(3))
+        # Status Bar (With Getting Data)
+        #statusbarstr = "Press 'q' or Ctrl+C to exit | {} | Pos: {}, {}".format(hora, cursor_x, cursor_y)        
+        statusbar=StatusBar()
+        hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    
+        statusbar.draw(stdscr,"Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s  ==== GETTING DATA ====".format(hora, SECONDS),width,height)
+
+        # Getting Data
+        nodes = Nodes(width-4)        
+        ver = Version()      
+        pods=Pods(width-4)  
+        pvcs=Pvcs(width-4)        
+
+        statusbar.draw(stdscr,"Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s".format(hora, SECONDS) ,width,height)        
+
         stdscr.attron(curses.color_pair(11))
         stdscr.attron(curses.A_BOLD)
+
+
+        # END OF INITIALIZATION
 
         k = stdscr.getch()
     
