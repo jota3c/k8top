@@ -1,0 +1,300 @@
+#!/bin/env python3
+import curses
+import shlex, subprocess
+import re
+import io
+from numpy import true_divide
+import pandas as pd
+from datetime import datetime
+from time import sleep
+
+#
+SECONDS=5
+
+# COMMANDOS
+# TERMINAR TODOS COM SPACE
+
+# AJUSTAR CONFORME A INFRA
+MAINCMD="kubectl "
+
+NODES="get nodes "
+VERSION=" version --short  "
+PODS="get pods -A "
+
+# NAO ALTERAR
+SPACETOCSV="| tr -s '[:blank:]' ';' "
+NODESCMD=shlex.split(MAINCMD+NODES)
+VERSIONCMD=shlex.split(MAINCMD+VERSION)
+PODSCMD=shlex.split(MAINCMD+PODS)
+
+class Pods:
+    def __init__(self,width,rows=5):
+        result = subprocess.run(PODSCMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+        filtered_result = re.sub(r'\([^)]*\)', '',result.stdout.decode('utf-8'))
+        csv_result = re.sub( r"[^\S\n\t]+", ";", filtered_result )        
+        pd.set_option('display.max_rows', rows)
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', width)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.colheader_justify', 'right')
+        self.df = pd.read_csv(io.StringIO(csv_result), delimiter=';')
+
+    def get(self):
+        return self.df
+
+    def restarts(self):
+        filter=self.df.query("RESTARTS != 0")
+        return filter.sort_values(by=['RESTARTS'], ascending=False)
+
+
+    def failed(self):
+        return self.df.query("STATUS != 'Running' and STATUS != 'Completed' and STATUS != 'Terminated'")
+
+    def countfailed(self):
+        return str(len(self.df.query("STATUS != 'Running' and STATUS != 'Completed' and STATUS != 'Terminated'").index))
+
+    def count(self):
+        #df_filter=self.df['STATUS'].value_counts()
+        df_sum=int(self.countrun())+int(self.countfailed())
+        return str(df_sum)
+
+    def countrun(self):        
+        dftmp=self.df['STATUS'].value_counts()
+        return str(dftmp['Running'])
+        
+
+class Version:
+    def __init__(self):
+        result = subprocess.run(VERSIONCMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+        csv_result = re.sub( r"[^\S\n\t]+", ";", result.stdout.decode('utf-8') )
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', None)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.colheader_justify', 'right')
+        self.df = pd.read_csv(io.StringIO(csv_result), delimiter=';', names=["object", "trash", "version"])
+
+    def client(self):
+        return str(self.df[self.df.object=='Client'].version.item())
+
+    def server(self):
+        return str(self.df[self.df.object=='Server'].version.item())
+
+    def match(self):
+        if self.df[self.df.object=='Client'].version.item() == self.df[self.df.object=='Server'].version.item():
+            return True
+        else:
+            return False
+        
+
+class Nodes:
+    def __init__(self,width,rows=5):
+        result = subprocess.run(NODESCMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+        csv_result = re.sub( r"[^\S\n\t]+", ";", result.stdout.decode('utf-8') )
+        pd.set_option('display.max_rows', rows)
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.width', width)
+        pd.set_option('display.max_colwidth', width)
+        pd.set_option('display.colheader_justify', 'right')
+        self.df = pd.read_csv(io.StringIO(csv_result), delimiter=';')
+
+    def count(self):
+        return str(len(self.df.index))
+
+    def get(self):
+        return self.df.to_string(index=False)
+
+    def countread2(self):
+        self.df.groupby("STATUS").sum() 
+        return str(len(self.df.groupby("STATUS").sum().index))
+    
+    def countready(self):
+        dftmp=self.df['STATUS'].value_counts()
+        return str(dftmp['Ready'])
+        
+
+# class Window(curses):
+#     def __init__(self):
+#         super().__init__()    
+        
+#     def draw(self,title,width,start):
+#         win1 = curses.newwin(9, width-1, 4, 0)
+#         win=self.newwin(9, width, start, 0) # curses.newwin(height, width, begin_y, begin_x)
+#         win.clear()
+#         win.border(0)
+#         win.refresh()
+
+
+def draw_menu(stdscr):
+    k = 0
+    cursor_x = 0
+    cursor_y = 0
+
+    # Clear and refresh the screen for a blank canvas
+    stdscr.clear()
+    stdscr.refresh()
+
+    # Start colors in curses
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
+
+    # Loop until "quit"
+    while (k != ord('q')):
+
+
+        # Initialization
+        stdscr.clear()
+        height, width = stdscr.getmaxyx()
+        onodes = Nodes(width-4)        
+        ver = Version()      
+        pods=Pods(width-4)  
+
+        if k == curses.KEY_DOWN:
+            cursor_y = cursor_y + 1
+        elif k == curses.KEY_UP:
+            cursor_y = cursor_y - 1
+        elif k == curses.KEY_RIGHT:
+            cursor_x = cursor_x + 1
+        elif k == curses.KEY_LEFT:
+            cursor_x = cursor_x - 1
+
+        cursor_x = max(0, cursor_x)
+        cursor_x = min(width-1, cursor_x)
+
+        cursor_y = max(0, cursor_y)
+        cursor_y = min(height-1, cursor_y)
+
+        # Desabilitando cursor
+        curses.curs_set(0)
+        # Nao esperar tecla ser pressionada
+        stdscr.nodelay(True)
+
+        # Declaration of strings
+        title = "Curses example"[:width-1]
+        subtitle = "Written by Clay McLeod"[:width-1]
+        keystr = "Last key pressed: {}".format(k)[:width-1]
+        hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+
+        #statusbarstr = "Press 'q' or Ctrl+C to exit | {} | Pos: {}, {}".format(hora, cursor_x, cursor_y)
+        statusbarstr = "Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s".format(hora, SECONDS)
+        #if k == 0:
+        #    keystr = "No key press detected..."[:width-1]
+
+        # Center (Examples)
+        #start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
+        #start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
+        #start_x_keystr = int((width // 2) - (len(keystr) // 2) - len(keystr) % 2)
+        #start_y = int((height // 2) - 2)
+
+        # Header
+        #whstr = "Width: {}, Height: {}".format(width, height)
+        stdscr.addstr(0, 0, "= K8Top =", curses.color_pair(1))
+
+        # Status bar
+        stdscr.attron(curses.color_pair(3))
+        stdscr.addstr(height-1, 0, statusbarstr)
+        stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
+        stdscr.attroff(curses.color_pair(3))
+
+        # Turning on attributes for title
+        stdscr.attron(curses.color_pair(11))
+        stdscr.attron(curses.A_BOLD)
+
+        ## Rendering title
+        #stdscr.addstr(start_y, start_x_title, title)
+        #pqp(stdscr)
+        k = stdscr.getch()
+
+    
+        nodestxt="Nodes : "+onodes.countready()
+        vertxt="Versions (cli/srv) : "+ver.client()+"/"+ver.server()
+        podstxt="Pods Running: "+pods.countrun()+"/"+pods.count()
+
+        #stdscr.addstr(1, 0, "Nodes : "+onodes.countready()+"/"+onodes.count()+" | Cluster : "+ver.server()+" | Client: "+ver.client())
+        stdscr.addstr(1, 0, nodestxt+" | "+podstxt+" | "+vertxt)
+        stdscr.hline(2,0,"_",width)
+
+
+        # Restarted Pods
+        win1 = curses.newwin(9, width-1, 4, 0) # curses.newwin(height, width, begin_y, begin_x)
+        win1.clear()
+        win1.border(0)
+        
+        win1.attron(curses.color_pair(2))
+        win1.attron(curses.A_BOLD)
+        title=" Top 5 Restarted Pods "
+        #start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
+        win1.addstr(0, 5, title)
+        win1.attroff(curses.color_pair(2))
+        win1.attroff(curses.A_BOLD)
+
+        lincount=1
+        for line in pods.restarts().to_string(index=False).split('\n'):
+            win1.addstr(lincount, 5, line)
+            if lincount >= 6: 
+                win1.addstr(lincount+1, 5, "...")
+                break
+            lincount+=1            
+        win1.refresh()
+
+        # Failed Pods
+        win2 = curses.newwin(9, width-1, 13, 0) # curses.newwin(height, width, begin_y, begin_x)
+        win2.clear()
+        win2.border(0)
+        win2.attron(curses.color_pair(2))
+        win2.attron(curses.A_BOLD)        
+        win2.addstr(0, 5, " Failed Pods ")
+        win2.attroff(curses.color_pair(2))
+        win2.attroff(curses.A_BOLD)        
+        lincount=1
+        for line in pods.failed().to_string(index=False).split('\n'):
+            win2.addstr(lincount, 5, line)
+            if lincount >= 6: 
+                win2.addstr(lincount+1, 5, "...")
+                break
+            lincount+=1            
+        win2.refresh()
+
+        
+        #stdscr.addstr(2, 0, pqp4())
+        k = stdscr.getch()
+        # Turning off attributes for title
+        stdscr.attroff(curses.color_pair(2))
+        stdscr.attroff(curses.A_BOLD)
+
+        pad = curses.newpad(100, 100)
+        pad.addstr("This text is thirty characters")
+
+
+        ## Print rest of text
+        #stdscr.addstr(start_y + 1, start_x_subtitle, subtitle)
+        #stdscr.addstr(start_y + 3, (width // 2) - 2, '-' * 4)
+        #stdscr.addstr(start_y + 5, start_x_keystr, keystr)
+        #stdscr.move(cursor_y, cursor_x)
+
+        # Refresh the screen
+        stdscr.refresh()
+
+        # Wait for next input
+        count=0
+        while count <= SECONDS and k != ord('q'):
+            k = stdscr.getch()
+            sleep(0.5)
+            k = stdscr.getch()
+            sleep(0.5)                
+            count+=1
+
+def main():
+    # pods=Pods(None,4)
+    # print(pods.failed())
+    # exit()
+    # print(ver.match())
+    try:
+        curses.wrapper(draw_menu)
+    except KeyboardInterrupt:
+        return 
+
+if __name__ == "__main__":
+    main()
