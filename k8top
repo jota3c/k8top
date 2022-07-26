@@ -216,13 +216,16 @@ class TopWin:
             win.attroff(curses.color_pair(color))
             win.attroff(curses.A_BOLD)
             lincount=1
-            for line in df.to_string(index=False).split('\n'):
-                win.addstr(lincount, 5, line)
-                if lincount > h_win-1: 
-                    win.addstr(lincount, width-5, "...")
-                    break
-                lincount+=1           
-            win.refresh()
+            try:
+                for line in df.to_string(index=False).split('\n'):
+                    win.addstr(lincount, 5, line)
+                    if lincount > h_win-1: 
+                        win.addstr(lincount, width-5, "...")
+                        break
+                    lincount+=1           
+                win.refresh()
+            except:
+                pass
             return lincount+2
         return 0            
 
