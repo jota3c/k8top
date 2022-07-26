@@ -296,6 +296,10 @@ def draw_menu(stdscr):
 
         # END OF INITIALIZATION
 
+        body=curses.newwin(height-6,width,4,0)
+        body.clear()
+        body.refresh()
+
         k = stdscr.getch()
     
         nodestxt="Nodes Ready: {}/{}".format(nodes.countready(),nodes.count())
