@@ -137,7 +137,7 @@ class Operators(Po):
         #   True        False         False
 
     def notok(self):
-        return self.df.query("AVAILABLE != 'True' or PROGRESSING != 'False' or DEGRADED != 'False'")        
+        return self.df.query("AVAILABLE == False or PROGRESSING == True or DEGRADED == True")        
 
 
 
