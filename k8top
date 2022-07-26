@@ -215,7 +215,7 @@ class TopWin:
             for line in df.to_string(index=False).split('\n'):
                 win.addstr(lincount, 5, line)
                 if lincount > 6: 
-                    win.addstr(lincount+1, 5, "...")
+                    win.addstr(lincount, width-5, "...")
                     break
                 lincount+=1           
             win.refresh()
