@@ -330,7 +330,7 @@ def draw_menu(stdscr):
 
         # Nodes
         if nodes.validate == True:
-            last=last+TopWin().draw(nodes.get(),"Nodes",width-1,last,12)
+            last=last+TopWin().draw(nodes.get(),"Nodes",width-1,last,9)
 
 
         # Refresh
