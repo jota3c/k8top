@@ -221,7 +221,7 @@ class TopWin:
             win.attroff(curses.A_BOLD)
             lincount=1
             try:
-                for line in df.to_string(index=False).split('\n'):
+                for line in df.to_string(index=False,justify="justify-all",max_colwidth=w_win-2,col_space=6).split('\n'):
                     win.addstr(lincount, 5, line)
                     if lincount > h_win-3: 
                         win.addstr(lincount, width-5, "...")
@@ -232,6 +232,7 @@ class TopWin:
                 pass
             return lincount+2
         return 0            
+
 
 class StatusBar():
     def __init__(self):
@@ -290,7 +291,7 @@ def draw_menu(stdscr):
         statusbar=StatusBar()
         hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     
-        statusbar.draw(stdscr,"Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s  ==== GETTING DATA ====".format(hora, SECONDS),width,height)
+        statusbar.draw(stdscr,"Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s   ==== GETTING DATA ====".format(hora, SECONDS),width,height)
 
         # Getting Data
         nodes = Nodes(width-4)        
@@ -345,7 +346,8 @@ def draw_menu(stdscr):
 
         # # Nodes
         if nodes.validate == True and freelines > 3:
-            last=last+TopWin().draw(nodes.get(limit=freelines),"Nodes",width-1,last,freelines)
+            #last=last+TopWin().draw(nodes.get(limit=freelines),"Nodes",width-1,last,freelines)
+            last=last+TopWin().draw(nodes.get(),"Nodes",width-1,last,freelines)
             freelines=(height-1)-last 
         #TopWin().draw(pods.restarts(),"Nodes",width-1,last,freelines)
 
