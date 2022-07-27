@@ -20,13 +20,13 @@
 #
 
 import curses
-import operator
 import shlex, subprocess
 import re
 import io
 import pandas as pd
 from datetime import datetime
 from time import sleep
+import numpy as np
 
 #
 SECONDS=5
@@ -205,6 +205,19 @@ class TopWin:
         else:
             return df_size+4
 
+    def col_size(self,df,width):
+        total=0
+        for col in df.columns:
+            # df2 resultado de boolean para string
+            #mask = df.applymap(type) != bool
+            #d = {True: 'TRUE', False: 'FALSE'}
+            #df2 = df.where(mask, df.replace(d))
+            lengths = df[col].astype(str).str.len()
+            argmax = lengths.max()
+            total+=argmax
+        return round((width-total)/len(df.columns))
+
+
     def draw(self,df,title,width,start,max=9):
         # curses.newwin(height, width, begin_y, begin_x)
         if not df.empty:
@@ -219,9 +232,10 @@ class TopWin:
             win.addstr(0, 5, " {} ".format(title))
             win.attroff(curses.color_pair(color))
             win.attroff(curses.A_BOLD)
+            col_size=self.col_size(df,width)
             lincount=1
             try:
-                for line in df.to_string(index=False,justify="justify-all",max_colwidth=w_win-2,col_space=6).split('\n'):
+                for line in df.to_string(index=False,justify="justify-all",max_colwidth=w_win-2,col_space=col_size).split('\n'):
                     win.addstr(lincount, 5, line)
                     if lincount > h_win-3: 
                         win.addstr(lincount, width-5, "...")
