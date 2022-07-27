@@ -199,18 +199,17 @@ class TopWin:
     def __init__(self):
         pass
 
-    def winsize(self,df_index,max):
-        size=len(df_index)
-        if size > max:
+    def winsize(self,df_size,max):
+        if df_size+4 >= max:
             return max
         else:
-            return size
+            return df_size+4
 
     def draw(self,df,title,width,start,max=9):
         # curses.newwin(height, width, begin_y, begin_x)
         if not df.empty:
             color=3
-            win=curses.newwin(self.winsize(df.index,max),width,start,0)
+            win=curses.newwin(self.winsize(len(df.index),max),width,start,0)
             h_win,w_win=win.getmaxyx()
             win.clear()
             win.border(0)
@@ -327,7 +326,9 @@ def draw_menu(stdscr):
         stdscr.attroff(curses.color_pair(2))
         stdscr.attroff(curses.A_BOLD)
 
+        # Iniciando last contando com as linhas do header
         last=3
+        # Linhas free, descontando o tamanho da tela menos statusbar e header
         freelines=(height-1)-last
 
         # Operators
