@@ -328,7 +328,7 @@ def draw_menu(stdscr):
         stdscr.attroff(curses.A_BOLD)
 
         last=3
-        freelines=(height-3)-last
+        freelines=(height-1)-last
 
         # Operators
         if operators.validate == True and freelines > 3:
