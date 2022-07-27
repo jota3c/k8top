@@ -223,7 +223,7 @@ class TopWin:
             try:
                 for line in df.to_string(index=False).split('\n'):
                     win.addstr(lincount, 5, line)
-                    if lincount >= h_win-1: 
+                    if lincount > h_win-2: 
                         win.addstr(lincount, width-5, "...")
                         break
                     lincount+=1           
