@@ -335,18 +335,19 @@ def draw_menu(stdscr):
         # Operators
         if operators.validate == True and freelines > 3:
             last=last+TopWin().draw(operators.notok(),"Operators NotOK",width-1,last,9)
-            freelines+=-last
+            freelines+=-(last-1)
 
         # Failed Pods
         if pods.validate == True and freelines > 3:
             last=last+TopWin().draw(pods.failed(),"Not Running Pods",width-1,last,9)
+            freelines+=-(last-1)            
             last=last+TopWin().draw(pods.restarts(),"Top 5 Restarted Pods",width-1,last,9) 
-            freelines+=-last          
+            freelines+=-(last-1)         
 
         # # Nodes
         if nodes.validate == True and freelines > 3:
             last=last+TopWin().draw(nodes.get(limit=freelines),"Nodes",width-1,last,freelines)
-            freelines+=-last 
+            freelines+=-(last-1)
         #TopWin().draw(pods.restarts(),"Nodes",width-1,last,freelines)
 
 
