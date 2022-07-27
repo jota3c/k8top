@@ -180,11 +180,11 @@ class Nodes(Po):
         if limit == None:
             return self.df
         else: 
-            cp1_df=self.df.copy()
-            cp2_df=self.df.append(cp1_df, ignore_index=True)
-            bigdf=cp2_df.append(self.df, ignore_index=True)
-            return bigdf.head(limit)     
-            #return self.df.head(limit)     
+            # cp1_df=self.df.copy()
+            # cp2_df=self.df.append(cp1_df, ignore_index=True)
+            # bigdf=cp2_df.append(self.df, ignore_index=True)
+            # return bigdf.head(limit)     
+            return self.df.head(limit)     
 
     def countread2(self):
         self.df.groupby("STATUS").sum() 
@@ -307,7 +307,7 @@ def draw_menu(stdscr):
 
         # END OF INITIALIZATION
 
-        body=curses.newwin(height-6,width,4,0)
+        body=curses.newwin(height-5,width,4,0)
         body.clear()
         body.refresh()
 
