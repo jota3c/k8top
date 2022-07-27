@@ -200,7 +200,7 @@ class TopWin:
         pass
 
     def winsize(self,df_index,max):
-        size=len(df_index)+4
+        size=len(df_index)
         if size > max:
             return max
         else:
