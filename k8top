@@ -68,16 +68,16 @@ class CSV:
         return io.StringIO(csv_result)
 
 class Po:
-    def __init__(self,width=0,rows=5):
-        pd.set_option('display.max_rows', rows)
+    def __init__(self,width=0):
+        pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', None)
         pd.set_option('display.width', width)
         pd.set_option('display.max_colwidth', None)
         pd.set_option('display.colheader_justify', 'right')        
 
 class Pods(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
+    def __init__(self,width=0):
+        super().__init__(width=0)
         try:
             self.validate = True
             self.df = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
@@ -108,8 +108,8 @@ class Pods(Po):
 
 
 class Pvcs(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
+    def __init__(self,width=0):
+        super().__init__(width=0)
         try:
             self.validate = True            
             self.df = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')    
@@ -125,8 +125,8 @@ class Pvcs(Po):
         return str(dftmp['Bound'])
 
 class Operators(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
+    def __init__(self,width=0):
+        super().__init__(width=0)
         try:
             self.validate = True            
             self.df = pd.read_csv(CSV.getcsv(OPERATORSCMD), delimiter=';')  
@@ -142,8 +142,8 @@ class Operators(Po):
 
 
 class Version(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
+    def __init__(self,width=0):
+        super().__init__(width=0)
         try:
             self.validate = True            
             self.df = pd.read_csv(CSV.getcsv(VERSIONCMD), delimiter=';', names=["object", "trash", "version"])   
@@ -164,8 +164,8 @@ class Version(Po):
             return False
         
 class Nodes(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
+    def __init__(self,width=0):
+        super().__init__(width=0)
         try:
             self.validate = True            
             self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')  
