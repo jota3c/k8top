@@ -209,7 +209,8 @@ class TopWin:
         # curses.newwin(height, width, begin_y, begin_x)
         if not df.empty:
             color=3
-            win=curses.newwin(self.winsize(len(df.index),max),width,start,0)
+            df_size=len(df.index)
+            win=curses.newwin(self.winsize(df_size,max),width,start,0)
             h_win,w_win=win.getmaxyx()
             win.clear()
             win.border(0)
