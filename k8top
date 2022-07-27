@@ -230,7 +230,7 @@ class TopWin:
                 win.refresh()
             except:
                 pass
-            return lincount+1
+            return lincount+2
         return 0            
 
 class StatusBar():
