@@ -63,8 +63,11 @@ class CSV:
 
     def getcsv(CMD):
         result = subprocess.run(CMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
-        filtered_result = re.sub(r'\([^)]*\)', '',result.stdout.decode('utf-8'))
-        csv_result = re.sub( r"[^\S\n\t]+", ";", filtered_result )        
+        if result.returncode != 1:
+            csv_result = "STATUS;NAME\n;ERROR;RETURN-CODE:{}\n".format(result.returncode)
+        else:
+            filtered_result = re.sub(r'\([^)]*\)', '',result.stdout.decode('utf-8'))
+            csv_result = re.sub( r"[^\S\n\t]+", ";", filtered_result )        
         return io.StringIO(csv_result)
 
 class Po:
