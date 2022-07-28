@@ -1,7 +1,6 @@
 #!/bin/env python3
+""" K8Top - `top` like for K8S and OCP Clusters"""
 #
-###########################################################################
-# K8Top - "top" like for K8S and OCP Clusters
 ###########################################################################
 #
 # Copyright 2022 - Juliano Costa
@@ -18,6 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+###########################################################################
 
 import curses
 import shlex
@@ -59,6 +59,7 @@ OPERATORSCMD = shlex.split(MAINCMD+OPERATORS)
 
 
 class CSV:
+    """ Class to execute commands and return csv """
     def __init__(self):
         pass
 
@@ -73,6 +74,7 @@ class CSV:
         return io.StringIO(csv_result)
 
 class Po:
+    """ Main Class to define options to dataframes to be inherance for others """
     def __init__(self, width=0):
         pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', None)
@@ -81,6 +83,7 @@ class Po:
         pd.set_option('display.colheader_justify', 'right')
 
 class Pods(Po):
+    """ Class to use data from pods """
     def __init__(self, width=0):
         super().__init__(width=0)
         try:
@@ -90,32 +93,39 @@ class Pods(Po):
             self.validate = False
 
     def get(self):
+        """ Return an df with pods data """
         return self.df
 
     def restarts(self):
+        """ returns a df with pods with restart > 0 reverse sorted """
         filter = self.df.query("RESTARTS != 0")
         return filter.sort_values(by=['RESTARTS'], ascending=False).head(5)
 
 
     def failed(self):
+        """ return a df with pods not running """
         return self.df.query("STATUS != 'Running' and "+
                              "STATUS != 'Completed' and STATUS != 'Terminated'")
 
     def countfailed(self):
+        """ returns a str with the count of failing pods """
         return str(len(self.df.query("STATUS != 'Running' "+
                                      "and STATUS != 'Completed' "+
                                      "and STATUS != 'Terminated'").index))
 
     def count(self):
+        """ returns a str of count of pods """
         df_sum = int(self.countrun())+int(self.countfailed())
         return str(df_sum)
 
     def countrun(self):
+        """ returns a str of count of pods running """
         dftmp = self.df['STATUS'].value_counts()
         return str(dftmp['Running'])
 
 
 class Pvcs(Po):
+    """ Class to get info from PVCs"""
     def __init__(self, width=0):
         super().__init__(width=0)
         try:
@@ -126,13 +136,16 @@ class Pvcs(Po):
             self.df = None
 
     def count(self):
+        """ return str of count of pvcs"""
         return str(len(self.df.index))
 
     def countbound(self):
+        """ return str of count os pvcs bounded """
         dftmp = self.df['STATUS'].value_counts()
         return str(dftmp['Bound'])
 
 class Operators(Po):
+    """ Class to return data from Cluster Operators """
     def __init__(self, width=0):
         super().__init__(width=0)
         try:
@@ -145,6 +158,7 @@ class Operators(Po):
         #   True        False         False
 
     def notok(self):
+        """  returns df of cluster operators with problems """
         return self.df.query("AVAILABLE == False "+
                              "or PROGRESSING == True or DEGRADED == True")
 
@@ -161,17 +175,21 @@ class Version(Po):
             self.df = None
 
     def client(self):
+        """ return str of cli version """
         return str(self.df[self.df.object == 'Client'].version.item())
 
     def server(self):
+        """ return str of server version """
         return str(self.df[self.df.object == 'Server'].version.item())
 
     def match(self):
+        """ return if cli and servion version are the same """
         return True if self.client() == self.server() else False
 
-        
+
 
 class Nodes(Po):
+    """ Class to get nodes info"""
     def __init__(self, width=0):
         super().__init__(width=0)
         try:
@@ -181,9 +199,11 @@ class Nodes(Po):
             raise Exception(f"\n No nodes found. Check if {MAINCMD}is on path, configured and authenticated!")
 
     def count(self):
+        """ returns number of nodes """
         return str(len(self.df.index))
 
     def get(self, limit=None):
+        """ returns a df with node info """
         if limit is None:
             return self.df
         else:
@@ -194,25 +214,30 @@ class Nodes(Po):
             return self.df.head(limit)
 
     def countread2(self):
+        """ return str of count of nodes ready """
         self.df.groupby("STATUS").sum()
         return str(len(self.df.groupby("STATUS").sum().index))
 
     def countready(self):
+        """ return str of count of nodes ready """
         dftmp = self.df['STATUS'].value_counts()
         return str(dftmp['Ready'])
 
 
 class TopWin:
+    """ class to draw a win on screen """
     def __init__(self):
         pass
 
     def winsize(self, df_size, max):
+        """ return the maximum number of lines can be used on the window """
         if df_size+4 >= max:
             return max
         else:
             return df_size+4
 
     def col_size(self, df, width):
+        """ using the biggest cols on df returns the average free space for minimum col size """
         total = 0
         for col in df.columns:
             # df2 resultado de boolean para string
@@ -226,6 +251,7 @@ class TopWin:
 
 
     def draw(self, df, title, width, start, max=9):
+        """ draw a win on screen with data from df """
         # curses.newwin(height, width, begin_y, begin_x)
         if not df.empty:
             color = 3
@@ -256,10 +282,12 @@ class TopWin:
 
 
 class StatusBar():
+    """ class to draw the statusbar """
     def __init__(self):
         pass
 
     def draw(self, stdscr, title, width, height):
+        """ draw the status bar on the end of screen """
         statusbarstr = title
         stdscr.attron(curses.color_pair(3))
         stdscr.addstr(height-1, 0, statusbarstr)
@@ -268,6 +296,7 @@ class StatusBar():
         stdscr.refresh()
 
 def draw_menu(stdscr):
+    """ the main logic """
     k = 0
     #cursor_x = 0
     #cursor_y = 0
@@ -389,6 +418,7 @@ def draw_menu(stdscr):
             count += 1
 
 def main():
+    """ main method, just call the draw_menu """
     # pods = Pods(None, 4)
     # print(pods.failed())
     # exit()
