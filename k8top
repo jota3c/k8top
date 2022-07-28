@@ -63,11 +63,8 @@ class CSV:
 
     def getcsv(CMD):
         result = subprocess.run(CMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
-        if result.returncode != 1:
-            csv_result = "STATUS;NAME\n;ERROR;RETURN-CODE:{}\n".format(result.returncode)
-        else:
-            filtered_result = re.sub(r'\([^)]*\)', '',result.stdout.decode('utf-8'))
-            csv_result = re.sub( r"[^\S\n\t]+", ";", filtered_result )        
+        filtered_result = re.sub(r'\([^)]*\)', '',result.stdout.decode('utf-8'))
+        csv_result = re.sub( r"[^\S\n\t]+", ";", filtered_result )        
         return io.StringIO(csv_result)
 
 class Po:
@@ -170,11 +167,13 @@ class Nodes(Po):
     def __init__(self,width=0):
         super().__init__(width=0)
         try:
-            self.validate = True            
+            self.validate=True 
             self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')  
         except:
             self.validate = False            
             self.df = None
+        if self.df == None:
+            raise Exception("\n No nodes found. Check if {}is on path and authenticated!".format(MAINCMD))
 
     def count(self):
         return str(len(self.df.index))
