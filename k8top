@@ -170,10 +170,7 @@ class Nodes(Po):
             self.validate=True 
             self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')  
         except:
-            self.validate = False            
-            self.df = None
-        if self.df == None:
-            raise Exception("\n No nodes found. Check if {}is on path and authenticated!".format(MAINCMD))
+            raise Exception("\n No nodes found. Check if {}is on path, configured and authenticated!".format(MAINCMD))
 
     def count(self):
         return str(len(self.df.index))
