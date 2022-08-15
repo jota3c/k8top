@@ -197,7 +197,8 @@ class Clusterversion(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df_data = pd.read_fwf(CSV.getcsv(CLUSTERVERSIONCMD,raw=True))
+            colspecs = [(0, 9), (11, 19), (20, 31), (33, 44), (45, 54), (54,150)]
+            self.df_data = pd.read_fwf(CSV.getcsv(CLUSTERVERSIONCMD,raw=True),colspecs=colspecs)
             #self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD,filter=False), delimiter=None)
         except:
             self.validate = False
