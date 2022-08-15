@@ -65,13 +65,13 @@ class CSV:
     def __init__(self):
         pass
 
-    def getcsv(command_shell, filter=True):
+    def getcsv(command_shell, raw=False):
         """Recebe um comando a ser executado e retorna um cv"""
         result = subprocess.run(command_shell,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL,
                                 check=False)
-        if filter:
+        if not raw:
             filtered_result = re.sub(r'\([^)]*\)', '', result.stdout.decode('utf-8'))
             csv_result = re.sub(r"[^\S\n\t]+", ";", filtered_result)
         else:
@@ -197,7 +197,8 @@ class Clusterversion(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD,filter=False), delimiter=None)
+            self.df_data = pd.read_fwf(CSV.getcsv(CLUSTERVERSIONCMD,raw=True))
+            #self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD,filter=False), delimiter=None)
         except:
             self.validate = False
             self.df_data = None
