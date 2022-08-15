@@ -46,6 +46,7 @@ VERSION = "version --short  "
 PODS = "get pods -A "
 PVCS = "get pvc -A "
 OPERATORS = "get co "
+CLUSTERVERSION = "get clusterversion "
 
 # ATTENTION: Caution to change
 #SPACETOCSV="| tr -s '[:blank:]' ';' "
@@ -54,6 +55,7 @@ VERSIONCMD = shlex.split(MAINCMD+VERSION)
 PODSCMD = shlex.split(MAINCMD+PODS)
 PVCSCMD = shlex.split(MAINCMD+PVCS)
 OPERATORSCMD = shlex.split(MAINCMD+OPERATORS)
+CLUSTERVERSIONCMD = shlex.split(MAINCMD+CLUSTERVERSION)
 
 ### Enf of CMDS ######################
 
@@ -74,7 +76,7 @@ class CSV:
         return io.StringIO(csv_result)
 
 class Po:
-    """ Main Class to define options to dataframes to be inherance for others """
+    """ Main Class to define options to df_datas to be inherance for others """
     def __init__(self, width=0):
         pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', None)
@@ -88,40 +90,40 @@ class Pods(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
+            self.df_data = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
         except:
             self.validate = False
 
     def get(self):
-        """ Return an df with pods data """
-        return self.df
+        """ Return an df_data with pods data """
+        return self.df_data
 
     def restarts(self):
-        """ returns a df with pods with restart > 0 reverse sorted """
-        filter = self.df.query("RESTARTS != 0")
+        """ returns a df_data with pods with restart > 0 reverse sorted """
+        filter = self.df_data.query("RESTARTS != 0")
         return filter.sort_values(by=['RESTARTS'], ascending=False).head(5)
 
 
     def failed(self):
-        """ return a df with pods not running """
-        return self.df.query("STATUS != 'Running' and "+
-                             "STATUS != 'Completed' and STATUS != 'Terminated'")
+        """ return a df_data with pods not running """
+        return self.df_data.query("STATUS != 'Running' and "+
+                                  "STATUS != 'Completed' and STATUS != 'Terminated'")
 
     def countfailed(self):
         """ returns a str with the count of failing pods """
-        return str(len(self.df.query("STATUS != 'Running' "+
-                                     "and STATUS != 'Completed' "+
-                                     "and STATUS != 'Terminated'").index))
+        return str(len(self.df_data.query("STATUS != 'Running' "+
+                                          "and STATUS != 'Completed' "+
+                                          "and STATUS != 'Terminated'").index))
 
     def count(self):
         """ returns a str of count of pods """
-        df_sum = int(self.countrun())+int(self.countfailed())
-        return str(df_sum)
+        df_data_sum = int(self.countrun())+int(self.countfailed())
+        return str(df_data_sum)
 
     def countrun(self):
         """ returns a str of count of pods running """
-        dftmp = self.df['STATUS'].value_counts()
-        return str(dftmp['Running'])
+        df_datatmp = self.df_data['STATUS'].value_counts()
+        return str(df_datatmp['Running'])
 
 
 class Pvcs(Po):
@@ -130,19 +132,19 @@ class Pvcs(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')
+            self.df_data = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')
         except:
             self.validate = False
-            self.df = None
+            self.df_data = None
 
     def count(self):
         """ return str of count of pvcs"""
-        return str(len(self.df.index))
+        return str(len(self.df_data.index))
 
     def countbound(self):
         """ return str of count os pvcs bounded """
-        dftmp = self.df['STATUS'].value_counts()
-        return str(dftmp['Bound'])
+        df_datatmp = self.df_data['STATUS'].value_counts()
+        return str(df_datatmp['Bound'])
 
 class Operators(Po):
     """ Class to return data from Cluster Operators """
@@ -150,43 +152,59 @@ class Operators(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df = pd.read_csv(CSV.getcsv(OPERATORSCMD), delimiter=';')
+            self.df_data = pd.read_csv(CSV.getcsv(OPERATORSCMD), delimiter=';')
         except:
             self.validate = False
-            self.df = None
+            self.df_data = None
         #AVAILABLE   PROGRESSING   DEGRADED
         #   True        False         False
 
     def notok(self):
-        """  returns df of cluster operators with problems """
-        return self.df.query("AVAILABLE == False "+
-                             "or PROGRESSING == True or DEGRADED == True")
+        """  returns df_data of cluster operators with problems """
+        return self.df_data.query("AVAILABLE == False "+
+                                  "or PROGRESSING == True or DEGRADED == True")
 
 class Version(Po):
     def __init__(self, width=0):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df = pd.read_csv(CSV.getcsv(VERSIONCMD),
-                                  delimiter=';',
-                                  names=["object", "trash", "version"])
+            self.df_data = pd.read_csv(CSV.getcsv(VERSIONCMD),
+                                       delimiter=';',
+                                       names=["object", "trash", "version"])
         except:
             self.validate = False
-            self.df = None
+            self.df_data = None
 
     def client(self):
         """ return str of cli version """
-        return str(self.df[self.df.object == 'Client'].version.item())
+        return str(self.df_data[self.df_data.object == 'Client'].version.item())
 
     def server(self):
         """ return str of server version """
-        return str(self.df[self.df.object == 'Server'].version.item())
+        return str(self.df_data[self.df_data.object == 'Server'].version.item())
 
     def match(self):
         """ return if cli and servion version are the same """
         return True if self.client() == self.server() else False
 
+class Clusterversion(Po):
+    """ Class to return data from Cluster version  """
+    def __init__(self, width=0):
+        super().__init__(width=0)
+        try:
+            self.validate = True
+            self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD), delimiter=';')
+        except:
+            self.validate = False
+            self.df_data = None
+        #AVAILABLE   PROGRESSING   DEGRADED
+        #   True        False         False
 
+    def notok(self):
+        """  returns df_data of cluster operators with problems """
+        return self.df_data.query("AVAILABLE == False "+
+                                  "or PROGRESSING == True)
 
 class Nodes(Po):
     """ Class to get nodes info"""
@@ -194,34 +212,35 @@ class Nodes(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')
+            self.df_data = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')
         except:
-            raise Exception(f"\n No nodes found. Check if {MAINCMD}is on path, configured and authenticated!")
+            raise Exception(f"\n No nodes found. Check if {MAINCMD}"+
+                            "is on path, configured and authenticated!")
 
     def count(self):
         """ returns number of nodes """
-        return str(len(self.df.index))
+        return str(len(self.df_data.index))
 
     def get(self, limit=None):
-        """ returns a df with node info """
+        """ returns a df_data with node info """
         if limit is None:
-            return self.df
+            return self.df_data
         else:
-            # cp1_df=self.df.copy()
-            # cp2_df=self.df.append(cp1_df, ignore_index=True)
-            # bigdf=cp2_df.append(self.df, ignore_index=True)
-            # return bigdf.head(limit)
-            return self.df.head(limit)
+            # cp1_df_data=self.df_data.copy()
+            # cp2_df_data=self.df_data.append(cp1_df_data, ignore_index=True)
+            # bigdf_data=cp2_df_data.append(self.df_data, ignore_index=True)
+            # return bigdf_data.head(limit)
+            return self.df_data.head(limit)
 
     def countread2(self):
         """ return str of count of nodes ready """
-        self.df.groupby("STATUS").sum()
-        return str(len(self.df.groupby("STATUS").sum().index))
+        self.df_data.groupby("STATUS").sum()
+        return str(len(self.df_data.groupby("STATUS").sum().index))
 
     def countready(self):
         """ return str of count of nodes ready """
-        dftmp = self.df['STATUS'].value_counts()
-        return str(dftmp['Ready'])
+        df_datatmp = self.df_data['STATUS'].value_counts()
+        return str(df_datatmp['Ready'])
 
 
 class TopWin:
@@ -229,46 +248,49 @@ class TopWin:
     def __init__(self):
         pass
 
-    def winsize(self, df_size, max):
+    def winsize(self, df_data_size, max):
         """ return the maximum number of lines can be used on the window """
-        if df_size+4 >= max:
+        if df_data_size+4 >= max:
             return max
         else:
-            return df_size+4
+            return df_data_size+4
 
-    def col_size(self, df, width):
-        """ using the biggest cols on df returns the average free space for minimum col size """
+    def col_size(self, df_data, width):
+        """ using the biggest cols on df returns the avg free space for min col size """
         total = 0
-        for col in df.columns:
-            # df2 resultado de boolean para string
-            #mask = df.applymap(type) != bool
+        for col in df_data.columns:
+            # df_data2 resultado de boolean para string
+            #mask = df_data.applymap(type) != bool
             #d = {True: 'TRUE', False: 'FALSE'}
-            #df2 = df.where(mask, df.replace(d))
-            lengths = df[col].astype(str).str.len()
+            #df_data2 = df_data.where(mask, df_data.replace(d))
+            lengths = df_data[col].astype(str).str.len()
             argmax = lengths.max()
             total += argmax
-        return round((width-total)/len(df.columns))
+        return round((width-total)/len(df_data.columns))
 
 
-    def draw(self, df, title, width, start, max=9):
-        """ draw a win on screen with data from df """
+    def draw(self, df_data, title, width, start, max=9):
+        """ draw a win on screen with data from df_data """
         # curses.newwin(height, width, begin_y, begin_x)
-        if not df.empty:
+        if not df_data.empty:
             color = 3
-            df_size = len(df.index)
-            win = curses.newwin(self.winsize(df_size, max), width, start, 0)
+            df_data_size = len(df_data.index)
+            win = curses.newwin(self.winsize(df_data_size, max), width, start, 0)
             h_win, w_win = win.getmaxyx()
             win.clear()
             win.border(0)
             win.attron(curses.color_pair(color))
             win.attron(curses.A_BOLD)
-            win.addstr(0, 5, " {} ".format(title))
+            win.addstr(0, 5, f" {title} ")
             win.attroff(curses.color_pair(color))
             win.attroff(curses.A_BOLD)
-            col_size = self.col_size(df, width)
+            col_size = self.col_size(df_data, width)
             lincount = 1
             try:
-                for line in df.to_string(index=False, justify="justify-all", max_colwidth=w_win-2, col_space=col_size).split('\n'):
+                for line in df_data.to_string(index=False,
+                                              justify="justify-all",
+                                              max_colwidth=w_win-2,
+                                              col_space=col_size).split('\n'):
                     win.addstr(lincount, 5, line)
                     if lincount > h_win-3:
                         win.addstr(lincount, width-5, "...")
@@ -337,13 +359,12 @@ def draw_menu(stdscr):
         stdscr.addstr(0, 0, "= K8Top =", curses.color_pair(1))
 
         # Status Bar (With Getting Data)
-        #statusbarstr = "Press 'q' or Ctrl+C to exit | {} | Pos: {}, {}".format(hora, cursor_x, cursor_y)
         statusbar = StatusBar()
         hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
         statusbar.draw(stdscr,
-                       f"Press 'q' or Ctrl+C to exit | {hora} | Refresh every : {SECONDS}s" +
-                       " ==== GETTING DATA ====", width, height)
+                       f"Press '2x q' or Ctrl+C to exit | {hora} | Refresh every : {SECONDS}s" +
+                       " === GETTING DATA ===", width, height)
 
         # Getting Data
         nodes = Nodes(width-4)
@@ -351,8 +372,13 @@ def draw_menu(stdscr):
         pods = Pods(width-4)
         pvcs = Pvcs(width-4)
         operators = Operators(width-4)
+        clusterversion = Clusterversion(width-4)
 
-        statusbar.draw(stdscr, f"Press 'q' or Ctrl+C to exit | {hora} | Refresh every : {SECONDS}s", width, height)
+
+        statusbar.draw(stdscr, f"Press '2x q' or Ctrl+C to exit | {hora} |"+
+                       f" Refresh every : {SECONDS}s",
+                       width,
+                       height)
 
         stdscr.attron(curses.color_pair(11))
         stdscr.attron(curses.A_BOLD)
@@ -386,6 +412,11 @@ def draw_menu(stdscr):
         # Linhas free, descontando o tamanho da tela menos statusbar e header
         freelines = (height-1)-last
 
+        # Cluterversion
+        if clusterversion.validate is True and freelines > 3:
+            last = last+TopWin().draw(clusterversion.notok(), "ClusterVersion NotOK", width-1, last, 9)
+            freelines = (height-1)-last
+
         # Operators
         if operators.validate is True and freelines > 3:
             last = last+TopWin().draw(operators.notok(), "Operators NotOK", width-1, last, 9)
@@ -399,7 +430,8 @@ def draw_menu(stdscr):
 
         # # Nodes
         if nodes.validate is True and freelines > 3:
-            #last = last+TopWin().draw(nodes.get(limit = freelines), "Nodes", width-1, last, freelines)
+            #last = last+TopWin().draw(nodes.get(limit = freelines),
+            #  "Nodes", width-1, last, freelines)
             last = last+TopWin().draw(nodes.get(), "Nodes", width-1, last, freelines)
             freelines = (height-1)-last
         #TopWin().draw(pods.restarts(), "Nodes", width-1, last, freelines)
