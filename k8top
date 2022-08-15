@@ -46,7 +46,7 @@ VERSION = "version --short  "
 PODS = "get pods -A "
 PVCS = "get pvc -A "
 OPERATORS = "get co "
-CLUSTERVERSION = 'get clusterversion |sed \'s/[[:<:]]Working[[:blank:]]*/Working/g\' '
+CLUSTERVERSION = 'get clusterversion '
 
 # ATTENTION: Caution to change
 #SPACETOCSV="| tr -s '[:blank:]' ';' "
@@ -65,14 +65,17 @@ class CSV:
     def __init__(self):
         pass
 
-    def getcsv(command_shell):
+    def getcsv(command_shell, filter=True):
         """Recebe um comando a ser executado e retorna um cv"""
         result = subprocess.run(command_shell,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL,
                                 check=False)
-        filtered_result = re.sub(r'\([^)]*\)', '', result.stdout.decode('utf-8'))
-        csv_result = re.sub(r"[^\S\n\t]+", ";", filtered_result)
+        if filter:
+            filtered_result = re.sub(r'\([^)]*\)', '', result.stdout.decode('utf-8'))
+            csv_result = re.sub(r"[^\S\n\t]+", ";", filtered_result)
+        else:
+            csv_result = result.stdout.decode('utf-8')
         return io.StringIO(csv_result)
 
 class Po:
@@ -194,7 +197,7 @@ class Clusterversion(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD), delimiter=';')
+            self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD,filter=False), delimiter=None)
         except:
             self.validate = False
             self.df_data = None
