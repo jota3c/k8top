@@ -203,8 +203,9 @@ class Clusterversion(Po):
 
     def notok(self):
         """  returns df_data of cluster operators with problems """
-        return self.df_data.query("AVAILABLE == False "+
-                                  "or PROGRESSING == True)
+        return self.df_data
+        # return self.df_data.query("AVAILABLE == False "+
+        #                           "or PROGRESSING == True")
 
 class Nodes(Po):
     """ Class to get nodes info"""
