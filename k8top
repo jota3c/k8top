@@ -46,7 +46,7 @@ VERSION = "version --short  "
 PODS = "get pods -A "
 PVCS = "get pvc -A "
 OPERATORS = "get co "
-CLUSTERVERSION = "get clusterversion |sed 's/[[:<:]]Working[[:blank:]]*/Working/g' "
+CLUSTERVERSION = 'get clusterversion |sed \'s/[[:<:]]Working[[:blank:]]*/Working/g\' '
 
 # ATTENTION: Caution to change
 #SPACETOCSV="| tr -s '[:blank:]' ';' "
