@@ -20,4 +20,4 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files 'k8top')
+        pylint --fail-under=80 $(git ls-files 'k8top')
