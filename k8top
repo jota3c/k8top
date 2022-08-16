@@ -103,8 +103,8 @@ class Pods(Po):
 
     def restarts(self):
         """ returns a df_data with pods with restart > 0 reverse sorted """
-        filter = self.df_data.query("RESTARTS != 0")
-        return filter.sort_values(by=['RESTARTS'], ascending=False).head(5)
+        filtered = self.df_data.query("RESTARTS != 0")
+        return filtered.sort_values(by=['RESTARTS'], ascending=False).head(5)
 
 
     def failed(self):
@@ -197,9 +197,11 @@ class Clusterversion(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            colspecs = [(0, 9), (10, 19), (20, 31), (32, 44), (45, 54), (54,180)]
-            self.df_data = pd.read_fwf(CSV.getcsv(CLUSTERVERSIONCMD,raw=True),colspecs=colspecs)
-            #self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD,filter=False), delimiter=None)
+            colspecs = [(0, 9), (10, 19), (20, 31), (32, 44), (45, 54), (54, 180)]
+            self.df_data = pd.read_fwf(
+                                       CSV.getcsv(CLUSTERVERSIONCMD, raw=True),
+                                       colspecs=colspecs
+                                       )
         except:
             self.validate = False
             self.df_data = None
@@ -254,10 +256,10 @@ class TopWin:
     def __init__(self):
         pass
 
-    def winsize(self, df_data_size, max):
+    def winsize(self, df_data_size, maxwin):
         """ return the maximum number of lines can be used on the window """
-        if df_data_size+4 >= max:
-            return max
+        if df_data_size+4 >= maxwin:
+            return maxwin
         else:
             return df_data_size+4
 
@@ -420,18 +422,26 @@ def draw_menu(stdscr):
 
         # Cluterversion
         if clusterversion.validate is True and freelines > 3:
-            last = last+TopWin().draw(clusterversion.notok(), "ClusterVersion NotOK", width-1, last, 9)
+            last = last+TopWin().draw(clusterversion.notok(),
+                                      "ClusterVersion NotOK",
+                                      width-1, last, 9)
             freelines = (height-1)-last
 
         # Operators
         if operators.validate is True and freelines > 3:
-            last = last+TopWin().draw(operators.notok(), "Operators NotOK", width-1, last, 9)
+            last = last+TopWin().draw(operators.notok(),
+                                      "Operators NotOK",
+                                      width-1, last, 9)
             freelines = (height-1)-last
 
         # Failed Pods
         if pods.validate is True and freelines > 3:
-            last = last+TopWin().draw(pods.failed(), "Not Running Pods", width-1, last, 9)
-            last = last+TopWin().draw(pods.restarts(), "Top 5 Restarted Pods", width-1, last, 9)
+            last = last+TopWin().draw(pods.failed(),
+                                      "Not Running Pods",
+                                      width-1, last, 9)
+            last = last+TopWin().draw(pods.restarts(),
+                                      "Top 5 Restarted Pods",
+                                      width-1, last, 9)
             freelines = (height-1)-last
 
         # # Nodes
