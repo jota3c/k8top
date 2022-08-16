@@ -1,7 +1,6 @@
 #!/bin/env python3
+""" K8Top - `top` like for K8S and OCP Clusters"""
 #
-###########################################################################
-# K8Top - "top" like for K8S and OCP Clusters
 ###########################################################################
 #
 # Copyright 2022 - Juliano Costa
@@ -18,188 +17,311 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+###########################################################################
 
 import curses
-import shlex, subprocess
+import shlex
+import subprocess
 import re
 import io
-import pandas as pd
 from datetime import datetime
 from time import sleep
+import pandas as pd
+
 
 #
-SECONDS=5
+SECONDS = 5
 
 #### CMDS ###########################
 # = Obs.: use white space on the end
 #####################################
 # Kubernetes
-MAINCMD="kubectl "
+MAINCMD = "kubectl "
 # Openshift
 #MAINCMD="oc "
 
 # Get Objects
-NODES="get nodes "
-VERSION="version --short  "
-PODS="get pods -A "
-PVCS="get pvc -A "
+NODES = "get nodes "
+VERSION = "version --short  "
+PODS = "get pods -A "
+PVCS = "get pvc -A "
+OPERATORS = "get co "
+CLUSTERVERSION = "get clusterversion "
 
 # ATTENTION: Caution to change
 #SPACETOCSV="| tr -s '[:blank:]' ';' "
-NODESCMD=shlex.split(MAINCMD+NODES)
-VERSIONCMD=shlex.split(MAINCMD+VERSION)
-PODSCMD=shlex.split(MAINCMD+PODS)
-PVCSCMD=shlex.split(MAINCMD+PVCS)
+NODESCMD = shlex.split(MAINCMD+NODES)
+VERSIONCMD = shlex.split(MAINCMD+VERSION)
+PODSCMD = shlex.split(MAINCMD+PODS)
+PVCSCMD = shlex.split(MAINCMD+PVCS)
+OPERATORSCMD = shlex.split(MAINCMD+OPERATORS)
+CLUSTERVERSIONCMD = shlex.split(MAINCMD+CLUSTERVERSION)
 
 ### Enf of CMDS ######################
 
 
 class CSV:
+    """ Class to execute commands and return csv """
     def __init__(self):
         pass
 
-    def getcsv(CMD):
-        result = subprocess.run(CMD, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
-        filtered_result = re.sub(r'\([^)]*\)', '',result.stdout.decode('utf-8'))
-        csv_result = re.sub( r"[^\S\n\t]+", ";", filtered_result )        
+    def getcsv(command_shell):
+        """Recebe um comando a ser executado e retorna um cv"""
+        result = subprocess.run(command_shell,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL,
+                                check=False)
+        filtered_result = re.sub(r'\([^)]*\)', '', result.stdout.decode('utf-8'))
+        csv_result = re.sub(r"[^\S\n\t]+", ";", filtered_result)
         return io.StringIO(csv_result)
 
 class Po:
-    def __init__(self,width=0,rows=5):
-        pd.set_option('display.max_rows', rows)
+    """ Main Class to define options to df_datas to be inherance for others """
+    def __init__(self, width=0):
+        pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', None)
         pd.set_option('display.width', width)
         pd.set_option('display.max_colwidth', None)
-        pd.set_option('display.colheader_justify', 'right')        
+        pd.set_option('display.colheader_justify', 'right')
 
 class Pods(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
+    """ Class to use data from pods """
+    def __init__(self, width=0):
+        super().__init__(width=0)
+        try:
+            self.validate = True
+            self.df_data = pd.read_csv(CSV.getcsv(PODSCMD), delimiter=';')
+        except:
+            self.validate = False
 
     def get(self):
-        return self.df
+        """ Return an df_data with pods data """
+        return self.df_data
 
     def restarts(self):
-        filter=self.df.query("RESTARTS != 0")
-        return filter.sort_values(by=['RESTARTS'], ascending=False)
+        """ returns a df_data with pods with restart > 0 reverse sorted """
+        filter = self.df_data.query("RESTARTS != 0")
+        return filter.sort_values(by=['RESTARTS'], ascending=False).head(5)
 
 
     def failed(self):
-        return self.df.query("STATUS != 'Running' and STATUS != 'Completed' and STATUS != 'Terminated'")
+        """ return a df_data with pods not running """
+        return self.df_data.query("STATUS != 'Running' and "+
+                                  "STATUS != 'Completed' and STATUS != 'Terminated'")
 
     def countfailed(self):
-        return str(len(self.df.query("STATUS != 'Running' and STATUS != 'Completed' and STATUS != 'Terminated'").index))
+        """ returns a str with the count of failing pods """
+        return str(len(self.df_data.query("STATUS != 'Running' "+
+                                          "and STATUS != 'Completed' "+
+                                          "and STATUS != 'Terminated'").index))
 
     def count(self):
-        df_sum=int(self.countrun())+int(self.countfailed())
-        return str(df_sum)
+        """ returns a str of count of pods """
+        df_data_sum = int(self.countrun())+int(self.countfailed())
+        return str(df_data_sum)
 
-    def countrun(self):        
-        dftmp=self.df['STATUS'].value_counts()
-        return str(dftmp['Running'])
+    def countrun(self):
+        """ returns a str of count of pods running """
+        df_datatmp = self.df_data['STATUS'].value_counts()
+        return str(df_datatmp['Running'])
 
 
 class Pvcs(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')    
+    """ Class to get info from PVCs"""
+    def __init__(self, width=0):
+        super().__init__(width=0)
+        try:
+            self.validate = True
+            self.df_data = pd.read_csv(CSV.getcsv(PVCSCMD), delimiter=';')
+        except:
+            self.validate = False
+            self.df_data = None
 
     def count(self):
-        return str(len(self.df.index))        
+        """ return str of count of pvcs"""
+        return str(len(self.df_data.index))
 
     def countbound(self):
-        dftmp=self.df['STATUS'].value_counts()
-        return str(dftmp['Bound'])        
+        """ return str of count os pvcs bounded """
+        df_datatmp = self.df_data['STATUS'].value_counts()
+        return str(df_datatmp['Bound'])
 
+class Operators(Po):
+    """ Class to return data from Cluster Operators """
+    def __init__(self, width=0):
+        super().__init__(width=0)
+        try:
+            self.validate = True
+            self.df_data = pd.read_csv(CSV.getcsv(OPERATORSCMD), delimiter=';')
+        except:
+            self.validate = False
+            self.df_data = None
+        #AVAILABLE   PROGRESSING   DEGRADED
+        #   True        False         False
+
+    def notok(self):
+        """  returns df_data of cluster operators with problems """
+        return self.df_data.query("AVAILABLE == False "+
+                                  "or PROGRESSING == True or DEGRADED == True")
 
 class Version(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(VERSIONCMD), delimiter=';', names=["object", "trash", "version"])   
+    def __init__(self, width=0):
+        super().__init__(width=0)
+        try:
+            self.validate = True
+            self.df_data = pd.read_csv(CSV.getcsv(VERSIONCMD),
+                                       delimiter=';',
+                                       names=["object", "trash", "version"])
+        except:
+            self.validate = False
+            self.df_data = None
 
     def client(self):
-        return str(self.df[self.df.object=='Client'].version.item())
+        """ return str of cli version """
+        return str(self.df_data[self.df_data.object == 'Client'].version.item())
 
     def server(self):
-        return str(self.df[self.df.object=='Server'].version.item())
+        """ return str of server version """
+        return str(self.df_data[self.df_data.object == 'Server'].version.item())
 
     def match(self):
-        if self.df[self.df.object=='Client'].version.item() == self.df[self.df.object=='Server'].version.item():
-            return True
-        else:
-            return False
-        
+        """ return if cli and servion version are the same """
+        return True if self.client() == self.server() else False
+
+class Clusterversion(Po):
+    """ Class to return data from Cluster version  """
+    def __init__(self, width=0):
+        super().__init__(width=0)
+        try:
+            self.validate = True
+            self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD), delimiter=';')
+        except:
+            self.validate = False
+            self.df_data = None
+        #AVAILABLE   PROGRESSING   DEGRADED
+        #   True        False         False
+
+    def notok(self):
+        """  returns df_data of cluster operators with problems """
+        return self.df_data.query("AVAILABLE == False "+
+                                  "or PROGRESSING == True)
+
 class Nodes(Po):
-    def __init__(self,width=0,rows=5):
-        super().__init__(width=0,rows=5)
-        self.df = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')  
+    """ Class to get nodes info"""
+    def __init__(self, width=0):
+        super().__init__(width=0)
+        try:
+            self.validate = True
+            self.df_data = pd.read_csv(CSV.getcsv(NODESCMD), delimiter=';')
+        except:
+            raise Exception(f"\n No nodes found. Check if {MAINCMD}"+
+                            "is on path, configured and authenticated!")
 
     def count(self):
-        return str(len(self.df.index))
+        """ returns number of nodes """
+        return str(len(self.df_data.index))
 
-    def get(self):
-        return self.df
+    def get(self, limit=None):
+        """ returns a df_data with node info """
+        if limit is None:
+            return self.df_data
+        else:
+            # cp1_df_data=self.df_data.copy()
+            # cp2_df_data=self.df_data.append(cp1_df_data, ignore_index=True)
+            # bigdf_data=cp2_df_data.append(self.df_data, ignore_index=True)
+            # return bigdf_data.head(limit)
+            return self.df_data.head(limit)
 
     def countread2(self):
-        self.df.groupby("STATUS").sum() 
-        return str(len(self.df.groupby("STATUS").sum().index))
-    
+        """ return str of count of nodes ready """
+        self.df_data.groupby("STATUS").sum()
+        return str(len(self.df_data.groupby("STATUS").sum().index))
+
     def countready(self):
-        dftmp=self.df['STATUS'].value_counts()
-        return str(dftmp['Ready'])
-        
+        """ return str of count of nodes ready """
+        df_datatmp = self.df_data['STATUS'].value_counts()
+        return str(df_datatmp['Ready'])
+
 
 class TopWin:
+    """ class to draw a win on screen """
     def __init__(self):
         pass
 
-    def winsize(self,df_index):
-        size=len(df_index)+4
-        if size > 9:
-            return 9
+    def winsize(self, df_data_size, max):
+        """ return the maximum number of lines can be used on the window """
+        if df_data_size+4 >= max:
+            return max
         else:
-            return size
+            return df_data_size+4
 
-    def draw(self,df,title,width,start):
+    def col_size(self, df_data, width):
+        """ using the biggest cols on df returns the avg free space for min col size """
+        total = 0
+        for col in df_data.columns:
+            # df_data2 resultado de boolean para string
+            #mask = df_data.applymap(type) != bool
+            #d = {True: 'TRUE', False: 'FALSE'}
+            #df_data2 = df_data.where(mask, df_data.replace(d))
+            lengths = df_data[col].astype(str).str.len()
+            argmax = lengths.max()
+            total += argmax
+        return round((width-total)/len(df_data.columns))
+
+
+    def draw(self, df_data, title, width, start, max=9):
+        """ draw a win on screen with data from df_data """
         # curses.newwin(height, width, begin_y, begin_x)
-        if not df.empty:
-            color=3
-            win=curses.newwin(self.winsize(df.index),width,start,0)
+        if not df_data.empty:
+            color = 3
+            df_data_size = len(df_data.index)
+            win = curses.newwin(self.winsize(df_data_size, max), width, start, 0)
+            h_win, w_win = win.getmaxyx()
             win.clear()
             win.border(0)
             win.attron(curses.color_pair(color))
             win.attron(curses.A_BOLD)
-            win.addstr(0, 5, " {} ".format(title))
+            win.addstr(0, 5, f" {title} ")
             win.attroff(curses.color_pair(color))
             win.attroff(curses.A_BOLD)
-            lincount=1
-            for line in df.to_string(index=False).split('\n'):
-                win.addstr(lincount, 5, line)
-                if lincount >= 6: 
-                    win.addstr(lincount+1, 5, "...")
-                    break
-                lincount+=1           
-            win.refresh()
+            col_size = self.col_size(df_data, width)
+            lincount = 1
+            try:
+                for line in df_data.to_string(index=False,
+                                              justify="justify-all",
+                                              max_colwidth=w_win-2,
+                                              col_space=col_size).split('\n'):
+                    win.addstr(lincount, 5, line)
+                    if lincount > h_win-3:
+                        win.addstr(lincount, width-5, "...")
+                        break
+                    lincount += 1
+                win.refresh()
+            except:
+                pass
             return lincount+2
-        return 0            
+        return 0
+
 
 class StatusBar():
+    """ class to draw the statusbar """
     def __init__(self):
         pass
 
-    def draw(self,stdscr,title,width,height):
-        statusbarstr = title       
+    def draw(self, stdscr, title, width, height):
+        """ draw the status bar on the end of screen """
+        statusbarstr = title
         stdscr.attron(curses.color_pair(3))
         stdscr.addstr(height-1, 0, statusbarstr)
         stdscr.addstr(height-1, len(statusbarstr), " " * (width - len(statusbarstr) - 1))
         stdscr.attroff(curses.color_pair(3))
-        stdscr.refresh()        
-    
+        stdscr.refresh()
+
 def draw_menu(stdscr):
+    """ the main logic """
     k = 0
-    cursor_x = 0
-    cursor_y = 0
+    #cursor_x = 0
+    #cursor_y = 0
 
     # Clear and refresh the screen for a blank canvas
     stdscr.clear()
@@ -212,7 +334,7 @@ def draw_menu(stdscr):
     curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
     # Loop until "quit"
-    while (k != ord('q')):
+    while k != ord('q'):
 
 
         # Initialization
@@ -225,8 +347,9 @@ def draw_menu(stdscr):
 
         # Nao esperar tecla ser pressionada
         stdscr.nodelay(True)
+        stdscr.refresh()
 
-         # exemplos para centralizar
+        # exemplos para centralizar
         #start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
         #start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
         #start_x_keystr = int((width // 2) - (len(keystr) // 2) - len(keystr) % 2)
@@ -236,19 +359,26 @@ def draw_menu(stdscr):
         stdscr.addstr(0, 0, "= K8Top =", curses.color_pair(1))
 
         # Status Bar (With Getting Data)
-        #statusbarstr = "Press 'q' or Ctrl+C to exit | {} | Pos: {}, {}".format(hora, cursor_x, cursor_y)        
-        statusbar=StatusBar()
+        statusbar = StatusBar()
         hora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    
-        statusbar.draw(stdscr,"Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s  ==== GETTING DATA ====".format(hora, SECONDS),width,height)
+
+        statusbar.draw(stdscr,
+                       f"Press '2x q' or Ctrl+C to exit | {hora} | Refresh every : {SECONDS}s" +
+                       " === GETTING DATA ===", width, height)
 
         # Getting Data
-        nodes = Nodes(width-4)        
-        ver = Version()      
-        pods=Pods(width-4)  
-        pvcs=Pvcs(width-4)        
+        nodes = Nodes(width-4)
+        ver = Version()
+        pods = Pods(width-4)
+        pvcs = Pvcs(width-4)
+        operators = Operators(width-4)
+        clusterversion = Clusterversion(width-4)
 
-        statusbar.draw(stdscr,"Press 'q' or Ctrl+C to exit | {} | Refresh every : {}s".format(hora, SECONDS) ,width,height)        
+
+        statusbar.draw(stdscr, f"Press '2x q' or Ctrl+C to exit | {hora} |"+
+                       f" Refresh every : {SECONDS}s",
+                       width,
+                       height)
 
         stdscr.attron(curses.color_pair(11))
         stdscr.attron(curses.A_BOLD)
@@ -256,15 +386,20 @@ def draw_menu(stdscr):
 
         # END OF INITIALIZATION
 
-        k = stdscr.getch()
-    
-        nodestxt="Nodes Ready: {}/{}".format(nodes.countready(),nodes.count())
-        vertxt="Versions (cli/srv): {}/{}".format(ver.client(),ver.server())
-        podstxt="Pods Running: {}/{} ".format(pods.countrun(),pods.count())
-        pvcstxt="PVC Bound: {}/{}".format(pvcs.countbound(),pvcs.count())
+        body = curses.newwin(height-5, width, 4, 0)
+        body.clear()
+        body.refresh()
 
-        stdscr.addstr(1, 0, "{} | {} | {} | {}".format(nodestxt,podstxt,pvcstxt,vertxt))
-        stdscr.hline(2,0,"_",width)
+        k = stdscr.getch()
+
+        nodestxt = f"Nodes Ready: {nodes.countready()}/{nodes.count()}"
+        #nodestxt = "Nodes Ready: {}/{}".format(nodes.countready(), nodes.count())
+        vertxt = f"Versions (cli/srv): {ver.client()}/{ver.server()}"
+        podstxt = f"Pods Running: {pods.countrun()}/{pods.count()} "
+        pvcstxt = f"PVC Bound: {pvcs.countbound()}/{pvcs.count()}"
+
+        stdscr.addstr(1, 0, f"{nodestxt} | {podstxt} | {pvcstxt} | {vertxt}")
+        stdscr.hline(2, 0, "_", width)
 
         k = stdscr.getch()
 
@@ -272,39 +407,58 @@ def draw_menu(stdscr):
         stdscr.attroff(curses.color_pair(2))
         stdscr.attroff(curses.A_BOLD)
 
-        last=3
+        # Iniciando last contando com as linhas do header
+        last = 3
+        # Linhas free, descontando o tamanho da tela menos statusbar e header
+        freelines = (height-1)-last
+
+        # Cluterversion
+        if clusterversion.validate is True and freelines > 3:
+            last = last+TopWin().draw(clusterversion.notok(), "ClusterVersion NotOK", width-1, last, 9)
+            freelines = (height-1)-last
+
+        # Operators
+        if operators.validate is True and freelines > 3:
+            last = last+TopWin().draw(operators.notok(), "Operators NotOK", width-1, last, 9)
+            freelines = (height-1)-last
 
         # Failed Pods
-        last=last+TopWin().draw(pods.failed(),"Failed Pods",width-1,last)
+        if pods.validate is True and freelines > 3:
+            last = last+TopWin().draw(pods.failed(), "Not Running Pods", width-1, last, 9)
+            last = last+TopWin().draw(pods.restarts(), "Top 5 Restarted Pods", width-1, last, 9)
+            freelines = (height-1)-last
 
-        # Restarting Pods
-        last=last+TopWin().draw(pods.restarts(),"Restarted Pods",width-1,last)        
-
-        # Nodes
-        last=last+TopWin().draw(nodes.get(),"Nodes",width-1,last+1)
+        # # Nodes
+        if nodes.validate is True and freelines > 3:
+            #last = last+TopWin().draw(nodes.get(limit = freelines),
+            #  "Nodes", width-1, last, freelines)
+            last = last+TopWin().draw(nodes.get(), "Nodes", width-1, last, freelines)
+            freelines = (height-1)-last
+        #TopWin().draw(pods.restarts(), "Nodes", width-1, last, freelines)
 
 
         # Refresh
         stdscr.refresh()
 
         # Wait key
-        count=0
+        count = 0
         while count <= SECONDS and k != ord('q'):
             k = stdscr.getch()
             sleep(0.5)
             k = stdscr.getch()
-            sleep(0.5)                
-            count+=1
+            sleep(0.5)
+            count += 1
 
 def main():
-    # pods=Pods(None,4)
+    """ main method, just call the draw_menu """
+    # pods = Pods(None, 4)
     # print(pods.failed())
     # exit()
     # print(ver.match())
     try:
         curses.wrapper(draw_menu)
     except KeyboardInterrupt:
-        return 
+        return
 
 if __name__ == "__main__":
     main()
