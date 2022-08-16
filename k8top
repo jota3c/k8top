@@ -46,7 +46,7 @@ VERSION = "version --short  "
 PODS = "get pods -A "
 PVCS = "get pvc -A "
 OPERATORS = "get co "
-CLUSTERVERSION = "get clusterversion "
+CLUSTERVERSION = 'get clusterversion '
 
 # ATTENTION: Caution to change
 #SPACETOCSV="| tr -s '[:blank:]' ';' "
@@ -65,14 +65,17 @@ class CSV:
     def __init__(self):
         pass
 
-    def getcsv(command_shell):
+    def getcsv(command_shell, raw=False):
         """Recebe um comando a ser executado e retorna um cv"""
         result = subprocess.run(command_shell,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL,
                                 check=False)
-        filtered_result = re.sub(r'\([^)]*\)', '', result.stdout.decode('utf-8'))
-        csv_result = re.sub(r"[^\S\n\t]+", ";", filtered_result)
+        if not raw:
+            filtered_result = re.sub(r'\([^)]*\)', '', result.stdout.decode('utf-8'))
+            csv_result = re.sub(r"[^\S\n\t]+", ";", filtered_result)
+        else:
+            csv_result = result.stdout.decode('utf-8')
         return io.StringIO(csv_result)
 
 class Po:
@@ -194,7 +197,9 @@ class Clusterversion(Po):
         super().__init__(width=0)
         try:
             self.validate = True
-            self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD), delimiter=';')
+            colspecs = [(0, 9), (10, 19), (20, 31), (32, 44), (45, 54), (54,180)]
+            self.df_data = pd.read_fwf(CSV.getcsv(CLUSTERVERSIONCMD,raw=True),colspecs=colspecs)
+            #self.df_data = pd.read_csv(CSV.getcsv(CLUSTERVERSIONCMD,filter=False), delimiter=None)
         except:
             self.validate = False
             self.df_data = None
@@ -203,8 +208,9 @@ class Clusterversion(Po):
 
     def notok(self):
         """  returns df_data of cluster operators with problems """
+        #return self.df_data
         return self.df_data.query("AVAILABLE == False "+
-                                  "or PROGRESSING == True)
+                                  "or PROGRESSING == True")
 
 class Nodes(Po):
     """ Class to get nodes info"""
